@@ -36,7 +36,6 @@ public class JsonUtil {
 		String jsonText = null;
 		try {
 			ObjectMapper mapper = new ObjectMapper();
-			
 			jsonText = mapper.writeValueAsString(toObjectFromString(readFile(filepath), List.class));
 		} catch (Exception e) {
 			e.printStackTrace();
