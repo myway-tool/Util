@@ -1,0 +1,192 @@
+https://packagecloud.io/rabbitmq/erlang/install#bash-rpm
+
+
+
+RabitMQ Cluster Install on CentOS7
+--------------------------------------------------------
+https://qiita.com/ryu_nakano/items/f604cff47aba70332bda
+
+
+RabbitMQ+Java
+--------------------------------------------------------
+https://qiita.com/k0001/items/3f507977e9c03f5fa51a
+
+
+
+
+
+
+
+
+# import the new PackageCloud key that will be used starting December 1st, 2018 (GMT)
+rpm --import https://packagecloud.io/rabbitmq/rabbitmq-server/gpgkey
+
+# import the old PackageCloud key that will be discontinued on December 1st, 2018 (GMT)
+rpm --import https://packagecloud.io/gpg.key
+
+
+
+
+
+
+
+
+
+
+
+
+===================================================================================================
+===================================================================================================
+Memo: RabitMQ Cluster Install on CentOS7
+RabbitMQ
+centos7
+Cluster
+この記事は最終更新日から1年以上が経過しています。
+RabitMQ ClusterをCentOS7にインストールした時のコマンドメモです。
+
+パッケージの準備
+yum install epel-release
+
+ll /etc/yum.repos.d/
+合計 44
+-rw-r--r--. 1 root root 1664  8月 13 23:34 CentOS-Base.repo
+-rw-r--r--. 1 root root 1309  8月 13 23:34 CentOS-CR.repo
+-rw-r--r--. 1 root root  649  8月 13 23:34 CentOS-Debuginfo.repo
+-rw-r--r--. 1 root root  630  8月 13 23:34 CentOS-Media.repo
+-rw-r--r--. 1 root root 1331  8月 13 23:34 CentOS-Sources.repo
+-rw-r--r--. 1 root root 4768  8月 13 23:34 CentOS-Vault.repo
+-rw-r--r--. 1 root root  314  8月 13 23:34 CentOS-fasttrack.repo
+-rw-r--r--. 1 root root 1050 10月  3  2017 epel-testing.repo
+-rw-r--r--. 1 root root  951  9月 14 03:29 epel.repo
+これにより、適切なepelパッゲージが、配置されます。
+
+インストール
+yum --enablerepo=epel -y install rabbitmq-server 
+systemctl enable rabbitmq-server 
+systemctl start rabbitmq-server
+
+systemctl status rabbitmq-server
+
+● rabbitmq-server.service - RabbitMQ broker
+   Loaded: loaded (/usr/lib/systemd/system/rabbitmq-server.service; enabled; vendor preset: disabled)
+   Active: active (running) since 水 2018-09-26 18:02:51 JST; 7min ago
+ Main PID: 6221 (beam)
+   CGroup: /system.slice/rabbitmq-server.service
+           tq6221 /usr/lib64/erlang/erts-5.10.4/bin/beam -W w -K true -A30 -P 1048576 -- -root /usr/lib64/erlang -progname erl -- -home /var/lib/rabbitmq -- -pa /usr/lib/rabbitmq/lib/rabbitmq_server-3.3.5/sbin/../ebin -noshell -noinpu...
+           tq6236 /usr/lib64/erlang/erts-5.10.4/bin/epmd -daemon
+           tq6293 inet_gethost 4
+           mq6294 inet_gethost 4
+
+ 9月 26 18:02:51 OpsMst systemd[1]: Starting RabbitMQ broker...
+ 9月 26 18:02:51 OpsMst systemd[1]: rabbitmq-server.service: Got notification message from PID 6236, but reception only permitted for main PID 6221
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: RabbitMQ 3.3.5. Copyright (C) 2007-2014 GoPivotal, Inc.
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: ##  ##      Licensed under the MPL.  See http://www.rabbitmq.com/
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: ##  ##
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: ##########  Logs: /var/log/rabbitmq/rabbit@OpsMst.log
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: ######  ##        /var/log/rabbitmq/rabbit@OpsMst-sasl.log
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: ##########
+ 9月 26 18:02:51 OpsMst rabbitmq-server[6221]: Starting broker... completed with 0 plugins.
+ 9月 26 18:02:51 OpsMst systemd[1]: Started RabbitMQ broker.
+クラスタを組む他のマシンでも実行します。
+
+ポートの開放
+もし、ファイヤーウォールを利用していれば、ポートの開放を行います。
+
+firewall-cmd --add-port=5672/tcp --permanent 
+firewall-cmd --add-port=15672/tcp --permanent 
+firewall-cmd --reload 
+クラスタ設定
+クラスタを組むマシンは、同じクラスタに所属していることを認識させる為に、cookieファイルを他のマシンにコピーします。
+cookieをコピーする前には停止させておきます。
+
+rabbitmqctl stop_app
+systemctl stop rabbitmq-server
+ls -aFl /var/lib/rabbitmq/.erlang.cookie
+-r--------. 1 rabbitmq rabbitmq 20  9月 26 00:00 /var/lib/rabbitmq/.erlang.cookie
+
+scp /var/lib/rabbitmq/.erlang.cookie root@hostname:/var/lib/rabbitmq/.erlang.cookie
+クラスタ設定を設定ファイルに投入し起動します。
+
+vi /etc/rabbitmq/rabbitmq.config
+
+       %% Make clustering happen *automatically* at startup - only applied
+       %% to nodes that have just been reset or started for the first time.
+       %% See http://www.rabbitmq.com/clustering.html#auto-config for
+       %% further details.
+       %%
+       %% {cluster_nodes, {['rabbit@my.host.com'], disc}},
+
+       {cluster_nodes, {['rabbit@host1', 'rabbit@host2'], disc}}
+
+systemctl start rabbitmq-server
+クラスタの動作を確認します。
+
+rabbitmqctl cluster_status
+
+    Cluster status of node rabbit@OpsMst ...
+    [{nodes,[{disc,[rabbit@OpsMst]}]},
+     {running_nodes,[rabbit@OpsMst]},
+     {cluster_name,<<"rabbit@OpsMst.ocp.local">>},
+     {partitions,[]}]
+    ...done.
+vHost, ユーザー パスワード Permissionの作成
+rabbitmqctl add_vhost /pulse
+    Creating vhost "/pulse" ...
+    ...done.
+
+rabbitmqctl add_user pulse pulse
+    Creating user "pulse" ...
+    ...done.
+
+rabbitmqctl set_permissions -p /pulse pulse "^pulse.*" ".*" ".*"
+    Setting permissions for user "pulse" in vhost "/pulse" ...
+    ...done.
+管理者コンソールの有効化
+rabbitmqctl set_user_tags pulse administrator
+rabbitmq-plugins enable rabbitmq_management
+確認方法
+
+
+curl -u pulse:pulse http://hostname:15672/
+
+
+
+
+
+
+==============================================================================
+Management Plugin
+==============================================================================
+
+rabbitmq-plugins enable rabbitmq_management
+
+service rabbitmq-server restart
+systemctl restart rabbitmq-server
+
+
+#rabbitmqctl add_user rabbitmq password
+rabbitmqctl set_user_tags rabbitmq administrator
+
+rabbitmqctl add_user mqadmin mqadmin
+rabbitmqctl set_user_tags mqadmin administrator
+
+
+
+
+
+
+http://192.168.43.184:15672/
+
+
+
+
+
+
+
+
+
+張った接続の中で
+
+
+
+

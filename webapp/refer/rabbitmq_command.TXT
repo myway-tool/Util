@@ -1,0 +1,124 @@
+RabbitMQ管理コマンド（rabbitmqctl）使い方
+RabbitMQ
+この記事は最終更新日から5年以上が経過しています。
+概要
+rabbitmqctlを使うことで、RabbitMQサーバーに対して、vhost作成・ユーザ作成・権限付与などの管理作業を行うことができる
+
+https://www.rabbitmq.com/man/rabbitmqctl.1.man.html
+vhost
+vhost作成
+$ sudo /usr/sbin/rabbitmqctl add_vhost <vhost name>
+例：/productionを作成
+$ sudo /usr/sbin/rabbitmqctl add_vhost /production
+実行結果
+Creating vhost "/production" ...
+...done.
+vhost確認
+$ sudo /usr/sbin/rabbitmqctl list_vhosts
+実行結果
+Listing vhosts ...
+/
+/production
+...done.
+/は名前なしのvhost。デフォルトで存在
+
+vhost削除
+$ sudo /usr/sbin/rabbitmqctl delete_vhost <vhost name>
+例：/productionを削除
+$ sudo /usr/sbin/rabbitmqctl delete_vhost /production
+実行結果
+Deleting vhost "/production" ...
+...done.
+ユーザ
+ユーザ作成
+$ sudo /usr/sbin/rabbitmqctl add_user <user> <password>
+例：user1(password=pass)を作成
+$ sudo /usr/sbin/rabbitmqctl add_user user1 pass
+v3.3.0から、guestユーザでのリモートサーバーへのアクセスができなくなったので、リモートからアクセスする場合は、ユーザを作らなければならない
+
+実行結果
+Creating user "user1 " ...
+ユーザ確認
+$ sudo /usr/sbin/rabbitmqctl list_users
+実行結果
+Listing users ...
+guest   [administrator]
+user1   []
+guestはデフォルトで存在。ただし、localhost以外はアクセスできない（v3.3.0～）
+
+ユーザ削除
+$ sudo /usr/sbin/rabbitmqctl delete_user <user>
+例：user1を削除
+$ sudo /usr/sbin/rabbitmqctl delete_user user1
+実行結果
+Deleting user "user1" ...
+権限
+権限作成
+$ sudo /usr/sbin/rabbitmqctl set_permissions -p <vhost name> <uesr> <permission>
+/productionに対して、user1の権限付与
+$ sudo /usr/sbin/rabbitmqctl set_permissions -p /production user1 ".*" ".*" ".*"
+ユーザだけ作成しても、権限が無いと、キューへの追加・削除はできない
+権限は左から、設定変更・書き込み・読み込み権限となる
+権限はvhostごとに付与するので注意（あるvhostに全権限付与しても、他のvhostには反映されない）
+実行結果
+Setting permissions for user "user1" in vhost "/production" ...
+権限確認
+$ sudo /usr/sbin/rabbitmqctl list_permissions -p <vhost name>
+例
+$ sudo /usr/sbin/rabbitmqctl list_permissions -p /production
+実行結果
+Listing permissions in vhost "/production" ...
+user1   .*      .*      .*
+権限削除
+$ sudo /usr/sbin/rabbitmqctl clear_permissions -p <vhost name> <user>
+例
+$ sudo /usr/sbin/rabbitmqctl clear_permissions -p /production user1
+実行結果
+Clearing permissions for user "user1" in vhost "/production" ...
+キュー
+キュー作成
+rabbitmqctlでキュー作成は不可（amqp, bunnyといったクライアントライブラリを使用）
+
+キュー確認
+$ sudo /usr/sbin/rabbitmqctl list_queues -p <vhost name>
+例
+$ sudo /usr/sbin/rabbitmqctl list_queues -p /production
+実行結果
+Listing queues ...
+queue1       0
+queue2       2
+...done.
+vhost名はtypoしてもエラーにならないので注意すること（「Listing queues ...　...done.」とだけ表示される）
+
+キュー削除
+rabbitmqctlで指定のキューだけ削除は不可（amqp, bunnyといったクライアントライブラリを使用）
+まるごと消すのであれば、delete_vhostでvhostごと消せば可能
+
+コネクション
+コネクション一覧
+$ sudo /usr/sbin/rabbitmqctl list_connections
+実行結果
+Listing connections ...
+user1        10.xx.xx.xx     47310   running
+user1        10.xx.xx.xx     47311   running
+user1        10.xx.xx.xx     47312   running
+左から、接続ユーザ名、接続元ホスト、プロセスID、ステータス
+コネクション削除
+コネクション削除にはコネクションのpid(LinuxのPIDとは別物）が必要なので、まずはpidを取得する
+
+$ sudo /usr/sbin/rabbitmqctl list_connections pid
+
+実行結果
+Listing connections ...
+<rabbit@hostname.2.22101.7>
+<rabbit@hostname.2.22108.7>
+<rabbit@hostname.2.22115.7>
+取得したpidを指定して、close_connectionを実行する
+
+$ sudo /usr/sbin/rabbitmqctl close_connection <pid> <comment>
+
+例
+$ sudo /usr/sbin/rabbitmqctl close_connection "<rabbit@hostname.2.22101.7>" "close"
+<comment>は何でも良いが、指定しないと削除できない
+
+
