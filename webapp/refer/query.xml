@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.demo.mapper">
+
+	<resultMap id="sessionInfoMap" type="com.example.demo.entity.SessionInfo" autoMapping="true">
+	    <id column="PRIMARY_ID" property="PRIMARY_ID" jdbcType="VARCHAR" />
+	    <result column="PRINCIPAL_NAME" property="PRINCIPAL_NAME" jdbcType="VARCHAR" />
+	
+	    <collection property="attrList" ofType="com.example.demo.entity.AttrInfo">
+	        <!-- <id column="SESSION_PRIMARY_ID" property="SESSION_PRIMARY_ID" jdbcType="VARCHAR" /> -->
+	        <result column="ATTRIBUTE_NAME" property="ATTRIBUTE_NAME" jdbcType="VARCHAR" />
+	        <result column="ATTRIBUTE_BYTES" property="ATTRIBUTE_BYTES" jdbcType="VARCHAR" />
+	    </collection>
+	</resultMap>
+
+    <select id="selectName" resultType="string">
+        SELECT PRIMARY_ID
+        FROM spring_session
+        LIMIT 1
+    </select>
+    
+<!--     <select id="selectSubInfo" resultType="com.example.demo.entity.SessionInfo"> -->
+    <select id="selectSubInfo" resultMap="sessionInfoMap">
+	    select 
+	    a.PRIMARY_ID, a.PRINCIPAL_NAME,
+	    b.ATTRIBUTE_NAME, b.ATTRIBUTE_BYTES
+	    from spring_session a, spring_session_attributes b
+	    where a.PRIMARY_ID = b.SESSION_PRIMARY_ID
+    </select>
+    
+</mapper>
